@@ -61,6 +61,22 @@ jobs:
             echo "Merged category: CATEGORY-ADS-EXTENDED"
           } > BUILD-INFO.txt
 
+      - name: Prepare static Honk download files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          cp build/geosite.dat build/geosite.dat.sha256sum publish/
+
+      - name: Publish static files to geodata branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: geodata
+          publish_dir: ./publish
+          force_orphan: true
+          commit_message: "Update static Honk GeoSite files"
+
       - name: Publish stable release assets
         uses: softprops/action-gh-release@v2
         with:
