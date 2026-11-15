@@ -1,6 +1,12 @@
 name: Update merged Geosite database
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/update-geosite.yml"
+      - "scripts/merge_geosite.py"
   schedule:
     # Daily at 20:17 UTC (04:17 China / 05:17 Japan).
     - cron: "17 20 * * *"
