@@ -53,6 +53,7 @@ jobs:
           set -euo pipefail
           cd build
           sha256sum geosite.dat > SHA256SUMS
+          sha256sum geosite.dat | awk '{print $1}' > geosite.dat.sha256sum
           {
             echo "Build date (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             echo "MetaCubeX source: https://github.com/MetaCubeX/meta-rules-dat/releases/tag/latest"
@@ -78,5 +79,6 @@ jobs:
           files: |
             build/geosite.dat
             build/SHA256SUMS
+            build/geosite.dat.sha256sum
             build/BUILD-INFO.txt
           fail_on_unmatched_files: true
