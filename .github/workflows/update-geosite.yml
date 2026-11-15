@@ -1,0 +1,82 @@
+name: Update merged Geosite database
+
+on:
+  schedule:
+    # Daily at 20:17 UTC (04:17 China / 05:17 Japan).
+    - cron: "17 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-merged-geosite
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download upstream GeoSite and Anti-AD list
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" \
+            --output build/upstream-geosite.dat
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-domains.txt" \
+            --output build/anti-ad-domains.txt
+          test -s build/upstream-geosite.dat
+          test -s build/anti-ad-domains.txt
+
+      - name: Merge and validate protobuf database
+        run: |
+          python scripts/merge_geosite.py \
+            --geosite build/upstream-geosite.dat \
+            --domains build/anti-ad-domains.txt \
+            --output build/geosite.dat
+
+      - name: Create checksums and build metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd build
+          sha256sum geosite.dat > SHA256SUMS
+          {
+            echo "Build date (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "MetaCubeX source: https://github.com/MetaCubeX/meta-rules-dat/releases/tag/latest"
+            echo "Anti-AD source: https://github.com/privacy-protection-tools/anti-AD"
+            echo "Merged category: CATEGORY-ADS-EXTENDED"
+          } > BUILD-INFO.txt
+
+      - name: Publish stable release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: geosite-latest
+          name: Latest merged Geosite database
+          body: |
+            Automatically rebuilt daily from the latest MetaCubeX GeoSite database
+            and the Anti-AD domain list.
+
+            Main asset: geosite.dat
+            Extended advertising category: CATEGORY-ADS-EXTENDED
+
+            The build validates protobuf structure and confirms all upstream
+            category codes remain present before publishing.
+          make_latest: true
+          files: |
+            build/geosite.dat
+            build/SHA256SUMS
+            build/BUILD-INFO.txt
+          fail_on_unmatched_files: true
